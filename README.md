@@ -26,7 +26,7 @@ Pas de framework. Pas de build tool. Juste du code.
 | app | description | tech |
 |-----|-------------|------|
 | [Quiz Manga](./quiz-manga/) | devine le perso, l'animé, le studio | JS vanilla |
-| [Pokédex](./sneaker-finder/) | 251 Pokémon · filtre par type · stats | fetch API |
+| [Pokédex](./pokedex/) | 251 Pokémon · filtre par type · stats | fetch API |
 | [Lap Timer Dubaï](./lap-timer/) | chrono de circuit · tours · delta | rAF · Audio |
 
 ---
