@@ -20,3 +20,5 @@ Thumbs.db
 # Node (au cas où)
 node_modules/
 npm-debug.log*
+guide.md
+briefe_INIT_PORTFOLIO.md
