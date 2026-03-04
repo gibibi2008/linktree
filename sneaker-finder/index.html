@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokédex — Gibibi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f0eb;
+      --surface: #ffffff;
+      --surface2: #f0ebe4;
+      --border: #e0d8ce;
+      --accent: #cc0000;
+      --accent-dim: rgba(204,0,0,0.08);
+      --accent-glow: 0 0 20px rgba(204,0,0,0.25);
+      --text: #1a1a1a;
+      --muted: #999;
+      --muted2: #bbb;
+      --font: 'Syne', sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px 80px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Subtle dot pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Red top bar */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: var(--accent);
+      z-index: 100;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 680px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 36px;
+    }
+
+    .back {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+    .back:hover { color: var(--accent); }
+
+    .nav-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 3px;
+      background: var(--surface);
+    }
+
+    /* ── HEADER ── */
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    h1 {
+      font-size: clamp(32px, 9vw, 54px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    h1 .accent { color: var(--accent); }
+
+    .subtitle {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+
+    /* ── FILTERS ── */
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.5s 0.1s ease both;
+      opacity: 0;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px 12px 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.5px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .search-input::placeholder { color: var(--muted2); }
+    .search-input:focus {
+      border-color: rgba(204,0,0,0.4);
+      box-shadow: 0 0 0 3px rgba(204,0,0,0.08);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .filter-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .type-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .chip:hover { border-color: #ccc; color: var(--text); }
+
+    .chip.active {
+      color: var(--text);
+      border-color: currentColor;
+      background: var(--surface);
+    }
+
+    .chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── RESULTS META ── */
+    .results-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .results-meta span { color: var(--accent); }
+
+    /* ── GRID ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      animation: fadeUp 0.5s 0.2s ease both;
+      opacity: 0;
+      min-height: 200px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      animation: fadeUp 0.3s ease both;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.14);
+    }
+
+    .card-img-wrap {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-bg-number {
+      position: absolute;
+      bottom: -8px;
+      right: -4px;
+      font-family: var(--mono);
+      font-size: 52px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.04);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      position: relative;
+      z-index: 1;
+      transition: transform 0.3s;
+      image-rendering: auto;
+    }
+
+    .card:hover .card-img { transform: scale(1.08) translateY(-4px); }
+
+    .card-body {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .card-id {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted2);
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+
+    .card-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: capitalize;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .type-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .type-tag {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: capitalize;
+      font-weight: 400;
+      color: #fff;
+    }
+
+    /* ── SKELETON ── */
+    .skeleton {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      animation: shimmer 1.4s ease infinite;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .skeleton-img { width: 100%; aspect-ratio: 1; background: var(--surface2); }
+    .skeleton-body { padding: 10px 12px; }
+    .skeleton-line {
+      height: 10px;
+      border-radius: 4px;
+      background: var(--surface2);
+      margin-bottom: 6px;
+    }
+    .skeleton-line.short { width: 60%; }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 60px 0;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* ── LOAD MORE ── */
+    .btn-more {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 1px;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .btn-more.visible { display: block; }
+    .btn-more:hover { border-color: rgba(204,0,0,0.4); color: var(--accent); }
+    .btn-more:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── MODAL ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 540px;
+      padding: 0 0 40px;
+      transform: translateY(30px);
+      transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.12);
+    }
+
+    .overlay.open .modal { transform: translateY(0); }
+
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 16px auto 0;
+    }
+
+    .modal-hero {
+      width: 100%;
+      padding: 20px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .modal-hero-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.07;
+      background: radial-gradient(circle at 50% 50%, var(--modal-type-color, var(--neon)), transparent 65%);
+    }
+
+    .modal-hero-number {
+      position: absolute;
+      bottom: 0;
+      right: 16px;
+      font-family: var(--mono);
+      font-size: 80px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.04);
+      line-height: 1;
+    }
+
+    .modal-img {
+      width: 160px;
+      height: 160px;
+      object-fit: contain;
+      position: relative;
+      z-index: 1;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6));
+    }
+
+    .modal-body {
+      padding: 20px 24px 0;
+    }
+
+    .modal-id {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+
+    .modal-name {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      text-transform: capitalize;
+      margin: 4px 0 10px;
+    }
+
+    .modal-types {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .modal-type-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-transform: capitalize;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    .modal-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .modal-row-label { color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+    .modal-row-val { color: var(--text); text-transform: capitalize; font-weight: 400; }
+
+    /* Stats bars */
+    .stats-section {
+      margin-top: 16px;
+    }
+
+    .stats-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: 100px 36px 1fr;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+
+    .stat-name {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: capitalize;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-val {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+      text-align: right;
+    }
+
+    .stat-bar-wrap {
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .stat-bar {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.6s ease;
+    }
+
+    .btn-close-modal {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      z-index: 10;
+    }
+    .btn-close-modal:hover { color: var(--accent); border-color: rgba(204,0,0,0.3); }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 52px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.8;
+      letter-spacing: 0.3px;
+    }
+
+    footer a {
+      color: rgba(204,0,0,0.5);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    footer a:hover { color: var(--accent); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav>
+    <a class="back" href="../index.html">← Retour</a>
+    <span class="nav-tag">API · Projet JS</span>
+  </nav>
+
+  <header>
+    <h1>POKÉ<span class="accent">DEX</span></h1>
+    <p class="subtitle">Données en direct · PokéAPI</p>
+  </header>
+
+  <div class="filters">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input
+        class="search-input"
+        id="search-input"
+        type="text"
+        placeholder="Rechercher un Pokémon..."
+        oninput="onSearch()"
+      />
+    </div>
+
+    <div>
+      <div class="filter-label">Filtrer par type</div>
+      <div class="type-chips" id="type-chips">
+        <button class="chip active" data-type="all" onclick="setType('all', this)">
+          Tous
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-meta">
+    <span id="results-count"><span>—</span> Pokémon</span>
+    <span id="load-status" style="color:var(--muted)"></span>
+  </div>
+
+  <div class="grid" id="grid">
+    <!-- skeletons on load -->
+  </div>
+
+  <button class="btn-more" id="btn-more" onclick="loadMore()">
+    Charger plus →
+  </button>
+
+  <footer>
+    fait avec 💻 et beaucoup de café ( de Colombia 🇨🇴 Pues Claro!) <br/>
+    Stack : <strong style="color:#555">HTML · CSS · JavaScript vanilla</strong><br/>
+    Données : <a href="https://pokeapi.co" target="_blank" rel="noopener">PokéAPI</a> (open source, gratuit) ·
+    Images : <a href="https://github.com/PokeAPI/sprites" target="_blank" rel="noopener">PokeAPI/sprites</a> (GitHub CDN) ·
+    Fonts : <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> (Syne + DM Mono)
+  </footer>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="onOverlayClick(event)">
+  <div class="modal" id="modal">
+    <button class="btn-close-modal" onclick="closeModal()">✕</button>
+    <div class="modal-handle"></div>
+    <div class="modal-hero">
+      <div class="modal-hero-bg" id="modal-hero-bg"></div>
+      <span class="modal-hero-number" id="modal-hero-number"></span>
+      <img class="modal-img" id="modal-img" src="" alt="" />
+    </div>
+    <div class="modal-body">
+      <div class="modal-id" id="modal-id"></div>
+      <div class="modal-name" id="modal-name"></div>
+      <div class="modal-types" id="modal-types"></div>
+      <div class="modal-row">
+        <span class="modal-row-label">TAILLE</span>
+        <span class="modal-row-val" id="modal-height"></span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">POIDS</span>
+        <span class="modal-row-val" id="modal-weight"></span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-label">CAPACITÉS</span>
+        <span class="modal-row-val" id="modal-abilities"></span>
+      </div>
+      <div class="stats-section">
+        <div class="stats-label">— Statistiques de base</div>
+        <div id="modal-stats"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── CONFIG ──
+  const BASE_URL = 'https://pokeapi.co/api/v2';
+  const PAGE_SIZE = 24;
+
+  const TYPE_COLORS = {
+    fire: '#ff6b35', water: '#4db8ff', grass: '#48d568',
+    electric: '#f7d716', psychic: '#f05fa3', ice: '#74d7f0',
+    dragon: '#8b6bff', dark: '#9a7c5e', fairy: '#f4acd7',
+    normal: '#a8a878', fighting: '#e05030', flying: '#a890f0',
+    poison: '#c060c8', ground: '#e0c068', rock: '#b8a038',
+    bug: '#a8b820', ghost: '#7060a8', steel: '#b8b8d0',
+    stellar: '#00f5d4', unknown: '#666'
+  };
+
+  const TYPE_LABELS = {
+    fire: 'Feu', water: 'Eau', grass: 'Plante', electric: 'Électrik',
+    psychic: 'Psy', ice: 'Glace', dragon: 'Dragon', dark: 'Ténèbres',
+    fairy: 'Fée', normal: 'Normal', fighting: 'Combat', flying: 'Vol',
+    poison: 'Poison', ground: 'Sol', rock: 'Roche', bug: 'Insecte',
+    ghost: 'Spectre', steel: 'Acier'
+  };
+
+  const STAT_LABELS = {
+    hp: 'PV', attack: 'Attaque', defense: 'Défense',
+    'special-attack': 'Attaque Spé', 'special-defense': 'Défense Spé', speed: 'Vitesse'
+  };
+
+  // ── STATE ──
+  let allPokemon = [];       // { name, url } from list endpoint
+  let pokemonCache = {};     // name -> full data
+  let activeType = 'all';
+  let searchQuery = '';
+  let displayedCount = 0;
+  let filteredList = [];
+  let typeLists = {};        // type -> [name, ...]
+  let loadingType = false;
+
+  // ── INIT ──
+  async function init() {
+    showSkeletons(12);
+    await loadTypes();
+    await loadAllPokemon();
+    applyFilters();
+  }
+
+  async function loadTypes() {
+    try {
+      const res = await fetch(`${BASE_URL}/type?limit=20`);
+      const data = await res.json();
+      const usedTypes = data.results.filter(t => TYPE_COLORS[t.name]);
+      renderTypeChips(usedTypes);
+    } catch (e) {
+      console.log('[PokeDex] types load error', e);
+    }
+  }
+
+  async function loadAllPokemon() {
+    try {
+      // Load first 251 (gen 1+2) for fast experience
+      const res = await fetch(`${BASE_URL}/pokemon?limit=251&offset=0`);
+      const data = await res.json();
+      allPokemon = data.results;
+      document.getElementById('load-status').textContent = `${allPokemon.length} chargés`;
+    } catch (e) {
+      console.log('[PokeDex] pokemon list error', e);
+    }
+  }
+
+  // ── RENDER TYPE CHIPS ──
+  function renderTypeChips(types) {
+    const container = document.getElementById('type-chips');
+    types.forEach(t => {
+      const color = TYPE_COLORS[t.name] || '#888';
+      const label = TYPE_LABELS[t.name] || t.name;
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.dataset.type = t.name;
+      btn.style.setProperty('--type-color', color);
+      btn.innerHTML = `<span class="chip-dot" style="background:${color}"></span>${label}`;
+      btn.onclick = () => setType(t.name, btn);
+      container.appendChild(btn);
+    });
+  }
+
+  // ── FILTERS ──
+  function setType(type, el) {
+    activeType = type;
+    document.querySelectorAll('.chip').forEach(c => {
+      c.classList.remove('active');
+      c.style.borderColor = '';
+      c.style.color = '';
+    });
+    el.classList.add('active');
+    if (type !== 'all') {
+      const color = TYPE_COLORS[type] || 'var(--neon)';
+      el.style.borderColor = color;
+      el.style.color = color;
+    }
+    applyFilters();
+  }
+
+  function onSearch() {
+    searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+    applyFilters();
+  }
+
+  async function applyFilters() {
+    showSkeletons(PAGE_SIZE);
+
+    let list = [...allPokemon];
+
+    // Type filter
+    if (activeType !== 'all') {
+      if (!typeLists[activeType]) {
+        await loadTypeList(activeType);
+      }
+      const typeNames = typeLists[activeType] || [];
+      list = list.filter(p => typeNames.includes(p.name));
+    }
+
+    // Search filter
+    if (searchQuery) {
+      list = list.filter(p => p.name.includes(searchQuery));
+    }
+
+    filteredList = list;
+    displayedCount = 0;
+    document.getElementById('results-count').innerHTML = `<span>${filteredList.length}</span> Pokémon`;
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    if (filteredList.length === 0) {
+      grid.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div>Aucun Pokémon trouvé.<br/>Essaie un autre filtre !</div>`;
+      document.getElementById('btn-more').classList.remove('visible');
+      return;
+    }
+
+    await renderBatch();
+  }
+
+  async function loadTypeList(type) {
+    try {
+      const res = await fetch(`${BASE_URL}/type/${type}`);
+      const data = await res.json();
+      typeLists[type] = data.pokemon.map(p => p.pokemon.name);
+    } catch (e) {
+      typeLists[type] = [];
+    }
+  }
+
+  // ── RENDER CARDS ──
+  async function renderBatch() {
+    const grid = document.getElementById('grid');
+    const batch = filteredList.slice(displayedCount, displayedCount + PAGE_SIZE);
+
+    // Show skeletons for batch
+    showSkeletons(batch.length);
+
+    // Fetch all pokemon data in parallel
+    const promises = batch.map(p => fetchPokemon(p.name, p.url));
+    const results = await Promise.allSettled(promises);
+
+    grid.innerHTML = '';
+
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value) {
+        grid.appendChild(makeCard(result.value, displayedCount + i));
+      }
+    });
+
+    displayedCount += batch.length;
+
+    const btnMore = document.getElementById('btn-more');
+    if (displayedCount < filteredList.length) {
+      btnMore.classList.add('visible');
+      btnMore.disabled = false;
+      btnMore.textContent = `Charger plus (${filteredList.length - displayedCount} restants) →`;
+    } else {
+      btnMore.classList.remove('visible');
+    }
+  }
+
+  async function loadMore() {
+    const btnMore = document.getElementById('btn-more');
+    btnMore.disabled = true;
+    btnMore.textContent = 'Chargement...';
+
+    const grid = document.getElementById('grid');
+    const batch = filteredList.slice(displayedCount, displayedCount + PAGE_SIZE);
+    const promises = batch.map(p => fetchPokemon(p.name, p.url));
+    const results = await Promise.allSettled(promises);
+
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value) {
+        const card = makeCard(result.value, displayedCount + i);
+        grid.appendChild(card);
+      }
+    });
+
+    displayedCount += batch.length;
+
+    if (displayedCount < filteredList.length) {
+      btnMore.disabled = false;
+      btnMore.textContent = `Charger plus (${filteredList.length - displayedCount} restants) →`;
+    } else {
+      btnMore.classList.remove('visible');
+    }
+  }
+
+  async function fetchPokemon(name, url) {
+    if (pokemonCache[name]) return pokemonCache[name];
+    try {
+      const res = await fetch(url || `${BASE_URL}/pokemon/${name}`);
+      const data = await res.json();
+      pokemonCache[name] = data;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function makeCard(p, index) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = `${(index % PAGE_SIZE) * 0.04}s`;
+
+    const types = p.types.map(t => t.type.name);
+    const mainType = types[0];
+    const color = TYPE_COLORS[mainType] || '#888';
+    const artwork = p.sprites?.other?.['official-artwork']?.front_default || '';
+
+    card.style.borderColor = 'var(--border)';
+    card.addEventListener('mouseenter', () => {
+      card.style.borderColor = color + '55';
+      card.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${color}22`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.borderColor = 'var(--border)';
+      card.style.boxShadow = '';
+    });
+
+    card.innerHTML = `
+      <div class="card-img-wrap" style="background: radial-gradient(circle at 50% 60%, ${color}12, transparent 70%)">
+        <span class="card-bg-number">#${String(p.id).padStart(3,'0')}</span>
+        ${artwork
+          ? `<img class="card-img" src="${artwork}" alt="${p.name}" loading="lazy" />`
+          : `<div style="width:80%;height:80%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:32px">?</div>`
+        }
+      </div>
+      <div class="card-body">
+        <div class="card-id">#${String(p.id).padStart(3,'0')}</div>
+        <div class="card-name">${p.name}</div>
+        <div class="type-tags">
+          ${types.map(t => `<span class="type-tag" style="background:${TYPE_COLORS[t] || '#888'}33;color:${TYPE_COLORS[t] || '#888'};border:1px solid ${TYPE_COLORS[t] || '#888'}44">${TYPE_LABELS[t] || t}</span>`).join('')}
+        </div>
+      </div>
+    `;
+
+    card.onclick = () => openModal(p);
+    return card;
+  }
+
+  // ── SKELETONS ──
+  function showSkeletons(count) {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+      grid.innerHTML += `
+        <div class="skeleton">
+          <div class="skeleton-img"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+          </div>
+        </div>`;
+    }
+  }
+
+  // ── MODAL ──
+  function openModal(p) {
+    const types = p.types.map(t => t.type.name);
+    const mainType = types[0];
+    const color = TYPE_COLORS[mainType] || 'var(--neon)';
+    const artwork = p.sprites?.other?.['official-artwork']?.front_default || '';
+
+    document.getElementById('modal-img').src = artwork;
+    document.getElementById('modal-img').alt = p.name;
+    document.getElementById('modal-id').textContent = `#${String(p.id).padStart(3,'0')}`;
+    document.getElementById('modal-name').textContent = p.name;
+    document.getElementById('modal-hero-number').textContent = `#${String(p.id).padStart(3,'0')}`;
+    document.getElementById('modal-hero-bg').style.background = `radial-gradient(circle at 50% 50%, ${color}, transparent 65%)`;
+    document.getElementById('modal-height').textContent = `${(p.height / 10).toFixed(1)} m`;
+    document.getElementById('modal-weight').textContent = `${(p.weight / 10).toFixed(1)} kg`;
+
+    const abilities = p.abilities.map(a => a.ability.name).join(', ');
+    document.getElementById('modal-abilities').textContent = abilities;
+
+    // Types
+    document.getElementById('modal-types').innerHTML = types.map(t =>
+      `<span class="modal-type-tag" style="background:${TYPE_COLORS[t] || '#888'}33;color:${TYPE_COLORS[t] || '#888'};border:1px solid ${TYPE_COLORS[t] || '#888'}55">${TYPE_LABELS[t] || t}</span>`
+    ).join('');
+
+    // Stats
+    const statsEl = document.getElementById('modal-stats');
+    statsEl.innerHTML = p.stats.map(s => {
+      const pct = Math.min((s.base_stat / 255) * 100, 100);
+      const label = STAT_LABELS[s.stat.name] || s.stat.name;
+      const barColor = s.base_stat >= 100 ? color : s.base_stat >= 60 ? '#aaa' : 'var(--muted)';
+      return `
+        <div class="stat-row">
+          <span class="stat-name">${label}</span>
+          <span class="stat-val">${s.base_stat}</span>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function onOverlayClick(e) {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  }
+
+  // Start
+  init();
+</script>
+</body>
+</html>

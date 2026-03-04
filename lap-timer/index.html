@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lap Timer — Gibibi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #080808;
+      --surface: #0f0f0f;
+      --surface2: #141414;
+      --border: #1c1c1c;
+      --neon: #e8002d;
+      --neon-dim: rgba(232, 0, 45, 0.12);
+      --neon-glow-sm: 0 0 12px rgba(232,0,45,0.6);
+      --neon-glow: 0 0 30px rgba(232,0,45,0.45), 0 0 80px rgba(232,0,45,0.15);
+      --red: #ff3b5c;
+      --green: #e8002d;
+      --text: #e0e0e0;
+      --muted: #444;
+      --muted2: #2a2a2a;
+      --font: 'Syne', sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      color: var(--text);
+      font-family: var(--font);
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px 80px;
+      min-height: 100vh;
+      position: relative;
+      /* Dubai skyline background */
+      background-color: var(--bg);
+      background-image: url('https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1920&q=80&auto=format&fit=crop');
+      background-size: cover;
+      background-position: center bottom;
+      background-attachment: fixed;
+    }
+
+    /* Vignette overlay — dark edges, transparent center */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 70% at 50% 55%, rgba(4,6,12,0.45) 0%, rgba(4,6,12,0.92) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Subtle grid on top of overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(232,0,45,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,0,45,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 520px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* ── NAV ── */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .back {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .back:hover { color: var(--neon); }
+
+    .nav-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    .btn-sound {
+      font-family: var(--mono);
+      font-size: 14px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--muted);
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      line-height: 1;
+    }
+    .btn-sound:hover { color: var(--neon); border-color: rgba(232,0,45,0.4); }
+    .btn-sound.muted { opacity: 0.4; }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      animation: fadeIn 0.4s 0.08s ease both;
+      opacity: 0;
+    }
+
+    .title {
+      font-size: clamp(36px, 10vw, 52px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .title .accent { color: var(--neon); }
+
+    .subtitle {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+
+    /* ── TRACK DECORATION ── */
+    .track-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 32px;
+      animation: fadeIn 0.4s 0.12s ease both;
+      opacity: 0;
+    }
+
+    .track {
+      width: 240px;
+      height: 120px;
+      position: relative;
+    }
+
+    .track svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Animated car dot on track */
+    .car-dot {
+      animation: drive 4s linear infinite;
+      offset-path: path('M 18 30 L 90 30 Q 115 30 115 52 Q 115 65 95 65 L 75 65 Q 55 65 55 80 Q 55 95 80 95 L 200 95 Q 210 95 210 85 L 210 75 Q 210 65 200 65 L 145 65 Q 130 65 130 52 Q 130 38 145 38 L 200 38 Q 210 38 210 28 L 210 18 Q 210 8 200 8 L 18 8 Q 8 8 8 18 L 8 30 Q 8 40 18 40 Z');
+      offset-rotate: auto;
+    }
+
+    @keyframes drive {
+      from { offset-distance: 0%; }
+      to   { offset-distance: 100%; }
+    }
+
+    /* ── CHRONO DISPLAY ── */
+    .chrono-panel {
+      background: rgba(4, 6, 12, 0.90);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 32px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+      animation: fadeIn 0.4s 0.18s ease both;
+      opacity: 0;
+    }
+
+    .chrono-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .chrono-panel.running::before { opacity: 1; }
+
+    .chrono-panel.running .time-display {
+      text-shadow: var(--neon-glow);
+      color: var(--neon);
+    }
+
+    .label-small {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .time-display {
+      font-family: var(--mono);
+      font-size: clamp(52px, 16vw, 80px);
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -2px;
+      line-height: 1;
+      transition: color 0.3s, text-shadow 0.3s;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+    }
+
+    .time-display .ms {
+      font-size: 0.45em;
+      opacity: 0.6;
+      vertical-align: baseline;
+      letter-spacing: 0;
+    }
+
+    .lap-live {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 12px;
+      letter-spacing: 1px;
+      min-height: 16px;
+      transition: color 0.2s;
+    }
+
+    .lap-live.active { color: rgba(0,245,212,0.5); }
+
+    /* Status bar */
+    .status-bar {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .running .status-dot {
+      background: var(--neon);
+      box-shadow: var(--neon-glow-sm);
+      animation: pulse 1s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── BUTTONS ── */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+      animation: fadeIn 0.4s 0.24s ease both;
+      opacity: 0;
+    }
+
+    .btn {
+      padding: 14px 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(4, 6, 12, 0.78);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--neon);
+      border-color: var(--neon);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .btn-primary:hover {
+      background: #c4001f;
+      border-color: #c4001f;
+      box-shadow: var(--neon-glow-sm);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn-primary:disabled:hover {
+      background: var(--neon);
+      border-color: var(--neon);
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover {
+      border-color: #333;
+      background: #181818;
+    }
+
+    .btn-start {
+      grid-column: 1 / -1;
+      padding: 16px;
+      font-size: 15px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .btn-start.active {
+      background: #1a0005;
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .btn-start.active:hover {
+      background: #2a0008;
+      border-color: #ff5a75;
+      box-shadow: 0 0 12px rgba(255,59,92,0.4);
+    }
+
+    /* ── LAP LIST ── */
+    .laps-section {
+      animation: fadeIn 0.4s 0.3s ease both;
+      opacity: 0;
+    }
+
+    .laps-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 0 2px;
+    }
+
+    .laps-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .laps-count {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .laps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .lap-item {
+      display: grid;
+      grid-template-columns: 40px 1fr 90px 70px;
+      align-items: center;
+      padding: 10px 14px;
+      background: rgba(4, 6, 12, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 13px;
+      gap: 8px;
+      animation: slideIn 0.25s ease both;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .lap-item.best {
+      border-color: rgba(0,245,212,0.3);
+      background: rgba(0,245,212,0.04);
+    }
+
+    .lap-num {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .lap-time {
+      font-size: 14px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lap-item.best .lap-time {
+      color: var(--neon);
+    }
+
+    .lap-delta {
+      font-size: 12px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .delta-best { color: var(--green); }
+    .delta-slow { color: var(--red); }
+
+    .lap-badge {
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    .badge-best {
+      color: var(--neon);
+      border: 1px solid rgba(0,245,212,0.3);
+      border-radius: 3px;
+      padding: 2px 5px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      margin-top: 48px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      text-align: center;
+      letter-spacing: 0.5px;
+      line-height: 1.8;
+    }
+
+    .footer a {
+      color: rgba(232,0,45,0.45);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer a:hover { color: var(--neon); }
+
+    /* Photo credit bottom-right */
+    .photo-credit {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: rgba(255,255,255,0.18);
+      letter-spacing: 0.5px;
+      z-index: 1;
+    }
+    .photo-credit a {
+      color: rgba(255,255,255,0.25);
+      text-decoration: none;
+    }
+    .photo-credit a:hover { color: rgba(255,255,255,0.5); }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- NAV -->
+    <nav class="nav">
+      <a class="back" href="../index.html">← Retour</a>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-sound" id="btn-sound" onclick="toggleSound()" title="Son on/off">🔊</button>
+        <span class="nav-tag">Projet JS</span>
+      </div>
+    </nav>
+
+    <!-- HEADER -->
+    <header class="header">
+      <h1 class="title">LAP <span class="accent">TIMER</span></h1>
+      <p class="subtitle">Autodrome · Dubaï</p>
+    </header>
+
+    <!-- TRACK SVG DECORATION -->
+    <div class="track-wrap">
+      <div class="track">
+        <svg viewBox="0 0 220 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!--
+            Forme S façon circuit F1 :
+            longue ligne droite en haut → virage serré à droite →
+            chicane en S au centre → virage à gauche → ligne droite retour
+          -->
+
+          <!-- Piste extérieure (trait épais blanc) -->
+          <path d="
+            M 18 30
+            L 90 30
+            Q 115 30 115 52
+            Q 115 65 95 65
+            L 75 65
+            Q 55 65 55 80
+            Q 55 95 80 95
+            L 200 95
+            Q 210 95 210 85
+            L 210 75
+            Q 210 65 200 65
+            L 145 65
+            Q 130 65 130 52
+            Q 130 38 145 38
+            L 200 38
+            Q 210 38 210 28
+            L 210 18
+            Q 210 8 200 8
+            L 18 8
+            Q 8 8 8 18
+            L 8 30
+            Q 8 40 18 40
+            L 18 30
+          "
+            stroke="rgba(255,255,255,0.22)" stroke-width="9" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Ligne centrale pointillée -->
+          <path d="
+            M 18 30
+            L 90 30
+            Q 115 30 115 52
+            Q 115 65 95 65
+            L 75 65
+            Q 55 65 55 80
+            Q 55 95 80 95
+            L 200 95
+            Q 210 95 210 85
+            L 210 75
+            Q 210 65 200 65
+            L 145 65
+            Q 130 65 130 52
+            Q 130 38 145 38
+            L 200 38
+            Q 210 38 210 28
+            L 210 18
+            Q 210 8 200 8
+            L 18 8
+            Q 8 8 8 18
+            L 8 30
+          "
+            stroke="rgba(255,255,255,0.06)" stroke-width="1"
+            stroke-dasharray="4 6" fill="none"
+            stroke-linecap="round"/>
+
+          <!-- Ligne start/finish (barre blanche perpendiculaire à la piste) -->
+          <line x1="60" y1="5" x2="60" y2="14" stroke="rgba(255,255,255,0.7)" stroke-width="2"/>
+
+          <!-- Point voiture animé -->
+          <circle class="car-dot" r="4" fill="#e8002d" filter="url(#glow)"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- CHRONO -->
+    <div class="chrono-panel" id="chrono-panel">
+      <div class="label-small">Temps total</div>
+      <div class="time-display" id="time-display">
+        00:00<span class="ms">.00</span>
+      </div>
+      <div class="lap-live" id="lap-live">— Tour en cours —</div>
+      <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">ARRÊTÉ</span>
+      </div>
+    </div>
+
+    <!-- BUTTONS -->
+    <div class="btn-row">
+      <button class="btn btn-primary btn-start" id="btn-start" onclick="toggleTimer()">
+        DÉMARRER
+      </button>
+      <button class="btn btn-primary" id="btn-lap" onclick="recordLap()" disabled>
+        ⊕ Nouveau tour
+      </button>
+      <button class="btn btn-secondary" onclick="resetTimer()">
+        ↺ Réinitialiser
+      </button>
+    </div>
+
+    <!-- LAPS -->
+    <section class="laps-section">
+      <div class="laps-header">
+        <span class="laps-title">— Tours enregistrés</span>
+        <span class="laps-count" id="laps-count">0 tour(s)</span>
+      </div>
+      <div class="laps-list" id="laps-list">
+        <div class="empty-state" id="empty-state">
+          Démarre le chrono pour commencer
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      fait avec 💻 et beaucoup de café ( de Colombia 🇨🇴 Pues Claro!) <br/>
+      Stack : <strong style="color:rgba(255,255,255,0.3)">HTML · CSS · JavaScript vanilla</strong><br/>
+      Timer : <a href="https://developer.mozilla.org/fr/docs/Web/API/window/requestAnimationFrame" target="_blank" rel="noopener">requestAnimationFrame</a> ·
+      Fonts : <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> (Syne + DM Mono)
+    </footer>
+  </div>
+
+  <div class="photo-credit">
+    Photo : <a href="https://unsplash.com/photos/1512453979798" target="_blank" rel="noopener">Unsplash</a> · Dubai Autodrome
+  </div>
+
+  <script>
+    // ── AUDIO ──
+    const audio = new Audio('./data/f1-race.mp3');
+    audio.preload = 'auto';
+    let soundOn = true;
+    let audioUnlocked = false;
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      const btn = document.getElementById('btn-sound');
+      btn.textContent = soundOn ? '🔊' : '🔇';
+      btn.classList.toggle('muted', !soundOn);
+      if (!soundOn) audio.pause();
+    }
+
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+      // joue 0.01s en silence pour débloquer le contexte audio
+      audio.volume = 0;
+      audio.currentTime = 0;
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = 1;
+        // son d'intro : 3 premières secondes
+        if (soundOn) playIntro();
+      }).catch(() => {});
+    }
+
+    function playIntro() {
+      if (!soundOn) return;
+      audio.currentTime = 0;
+      audio.volume = 0.5;
+      audio.play();
+      setTimeout(() => fadeOut(audio, 1200), 3000);
+    }
+
+    function playStart() {
+      if (!soundOn) return;
+      audio.currentTime = 0;
+      audio.volume = 0.85;
+      audio.play();
+      setTimeout(() => fadeOut(audio, 1500), 4000);
+    }
+
+    function fadeOut(a, duration) {
+      const step = a.volume / (duration / 50);
+      const interval = setInterval(() => {
+        if (a.volume > step) {
+          a.volume = Math.max(0, a.volume - step);
+        } else {
+          a.volume = 0;
+          a.pause();
+          clearInterval(interval);
+        }
+      }, 50);
+    }
+
+    document.addEventListener('click', unlockAudio, { once: true });
+
+    // ── STATE ──
+    let running = false;
+    let startTime = 0;       // timestamp when timer started (ms)
+    let elapsed = 0;         // total elapsed ms (accumulated across pauses)
+    let lapStart = 0;        // elapsed ms at start of current lap
+    let laps = [];           // array of lap durations in ms
+    let rafId = null;
+
+    // ── DOM refs ──
+    const timeDisplay  = document.getElementById('time-display');
+    const lapLive      = document.getElementById('lap-live');
+    const lapsList     = document.getElementById('laps-list');
+    const emptyState   = document.getElementById('empty-state');
+    const lapsCount    = document.getElementById('laps-count');
+    const btnStart     = document.getElementById('btn-start');
+    const btnLap       = document.getElementById('btn-lap');
+    const chronoPanel  = document.getElementById('chrono-panel');
+    const statusText   = document.getElementById('status-text');
+
+    // ── FORMAT ──
+    function formatTime(ms) {
+      const minutes     = Math.floor(ms / 60000);
+      const seconds     = Math.floor((ms % 60000) / 1000);
+      const hundredths  = Math.floor((ms % 1000) / 10);
+      const mm = String(minutes).padStart(2, '0');
+      const ss = String(seconds).padStart(2, '0');
+      const hs = String(hundredths).padStart(2, '0');
+      return { mm, ss, hs };
+    }
+
+    function formatDelta(ms) {
+      const sign = ms >= 0 ? '+' : '-';
+      const abs  = Math.abs(ms);
+      const s    = Math.floor(abs / 1000);
+      const hs   = Math.floor((abs % 1000) / 10);
+      return `${sign}${s}.${String(hs).padStart(2, '0')}`;
+    }
+
+    // ── RENDER LOOP ──
+    function tick() {
+      elapsed = performance.now() - startTime;
+
+      const total = formatTime(elapsed);
+      const lapMs = elapsed - lapStart;
+      const lap   = formatTime(lapMs);
+
+      // Total display
+      timeDisplay.innerHTML = `${total.mm}:${total.ss}<span class="ms">.${total.hs}</span>`;
+
+      // Live lap
+      lapLive.textContent = `Tour en cours : ${lap.mm}:${lap.ss}.${lap.hs}`;
+      lapLive.classList.add('active');
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // ── CONTROLS ──
+    function toggleTimer() {
+      if (!running) {
+        playStart();
+        startTime = performance.now() - elapsed;
+        running = true;
+        rafId = requestAnimationFrame(tick);
+        btnStart.textContent = 'PAUSE';
+        btnStart.classList.add('active');
+        btnLap.disabled = false;
+        chronoPanel.classList.add('running');
+        statusText.textContent = 'EN COURS';
+      } else {
+        cancelAnimationFrame(rafId);
+        running = false;
+        btnStart.textContent = 'REPRENDRE';
+        btnStart.classList.remove('active');
+        chronoPanel.classList.remove('running');
+        lapLive.classList.remove('active');
+        statusText.textContent = 'PAUSE';
+      }
+    }
+
+    function recordLap() {
+      if (!running) return;
+
+      const lapDuration = elapsed - lapStart;
+      laps.push(lapDuration);
+      lapStart = elapsed;
+
+      renderLaps();
+    }
+
+    function resetTimer() {
+      cancelAnimationFrame(rafId);
+      running  = false;
+      elapsed  = 0;
+      lapStart = 0;
+      laps     = [];
+
+      const { mm, ss, hs } = formatTime(0);
+      timeDisplay.innerHTML = `${mm}:${ss}<span class="ms">.${hs}</span>`;
+      lapLive.textContent   = '— Tour en cours —';
+      lapLive.classList.remove('active');
+      chronoPanel.classList.remove('running');
+      btnStart.textContent = 'DÉMARRER';
+      btnStart.classList.remove('active');
+      btnLap.disabled = true;
+      statusText.textContent = 'ARRÊTÉ';
+
+      renderLaps();
+    }
+
+    function renderLaps() {
+      lapsCount.textContent = `${laps.length} tour(s)`;
+
+      if (laps.length === 0) {
+        lapsList.innerHTML = '';
+        lapsList.appendChild(emptyState);
+        return;
+      }
+
+      // Remove empty state
+      if (emptyState.parentNode) emptyState.parentNode.removeChild(emptyState);
+
+      const bestMs  = Math.min(...laps);
+      const bestIdx = laps.indexOf(bestMs);
+
+      lapsList.innerHTML = '';
+
+      // Render newest first
+      [...laps].reverse().forEach((ms, reversedIdx) => {
+        const idx   = laps.length - 1 - reversedIdx;
+        const isBest = (idx === bestIdx);
+        const delta  = ms - bestMs;
+        const { mm, ss, hs } = formatTime(ms);
+
+        const item = document.createElement('div');
+        item.className = `lap-item${isBest ? ' best' : ''}`;
+
+        const deltaHtml = isBest
+          ? `<span class="lap-delta delta-best">BEST</span>`
+          : `<span class="lap-delta delta-slow">${formatDelta(delta)}</span>`;
+
+        const badgeHtml = isBest
+          ? `<span class="lap-badge badge-best">⚡ BEST</span>`
+          : `<span class="lap-badge" style="color:var(--muted)">LAP ${idx + 1}</span>`;
+
+        item.innerHTML = `
+          <span class="lap-num">#${idx + 1}</span>
+          <span class="lap-time">${mm}:${ss}.${hs}</span>
+          ${deltaHtml}
+          ${badgeHtml}
+        `;
+
+        lapsList.appendChild(item);
+      });
+    }
+
+    // Initial render
+    renderLaps();
+  </script>
+</body>
+</html>
